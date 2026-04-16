@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Card Debt Tracker</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Cards + settlements</p>
+          <h1>Card Debt Tracker</h1>
+        </div>
+        <div class="chip" id="activeSessionChip">No active session</div>
+      </header>
+
+      <main class="main-content">
+        <section class="view active" data-view="home">
+          <div class="hero-card">
+            <p class="hero-kicker">Mobile-first tracker</p>
+            <h2>Play multiple games, keep score, settle later.</h2>
+            <p>
+              Built for your card nights: session mode with running debt, single game mode for quick
+              settle, and a history of unpaid balances.
+            </p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Start fresh</p>
+                <h3>New Session</h3>
+              </div>
+              <button class="secondary-btn" id="demoBtn" type="button">Load demo</button>
+            </div>
+
+            <form id="sessionForm" class="form-stack">
+              <label>
+                <span>Session name</span>
+                <input type="text" id="sessionName" placeholder="Friday Night Cards" />
+              </label>
+
+              <label>
+                <span>Mode</span>
+                <select id="sessionMode">
+                  <option value="session">Session mode (multiple games)</option>
+                  <option value="single">Single game (settle after one game)</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Win condition</span>
+                <select id="winCondition">
+                  <option value="first-1000">First to reach 1000</option>
+                  <option value="highest-score">Highest score</option>
+                </select>
+              </label>
+
+              <div class="subtle-box">
+                <div class="panel-head tight">
+                  <div>
+                    <p class="eyebrow">Players</p>
+                    <h4>4 or 5 players</h4>
+                  </div>
+                  <button class="secondary-btn" id="toggleFifthPlayerBtn" type="button">Add 5th player</button>
+                </div>
+                <div class="player-grid" id="playerInputs"></div>
+              </div>
+
+              <div class="subtle-box">
+                <div class="panel-head tight">
+                  <div>
+                    <p class="eyebrow">Money setup</p>
+                    <h4>Amount owed by final position</h4>
+                  </div>
+                </div>
+                <p class="helper-text">
+                  Set how much each finishing position pays. Use 0 if that position pays nothing.
+                </p>
+                <div class="payout-grid" id="payoutInputs"></div>
+              </div>
+
+              <button class="primary-btn" type="submit">Start session</button>
+            </form>
+          </div>
+
+          <div class="panel" id="openSessionPanel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Pick up where you left off</p>
+                <h3>Active Session</h3>
+              </div>
+            </div>
+            <div id="activeSessionSummary" class="empty-state">
+              No active session yet.
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-view="play">
+          <div id="playRoot" class="empty-state">Start a session to begin tracking scores.</div>
+        </section>
+
+        <section class="view" data-view="history">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Saved sessions</p>
+                <h3>History</h3>
+              </div>
+            </div>
+            <div id="historyRoot" class="history-list empty-state">No completed sessions yet.</div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav">
+        <button class="nav-btn active" data-nav="home" type="button">Home</button>
+        <button class="nav-btn" data-nav="play" type="button">Play</button>
+        <button class="nav-btn" data-nav="history" type="button">History</button>
+      </nav>
+    </div>
+
+    <dialog id="positionDialog">
+      <form method="dialog" class="dialog-form" id="positionForm">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Tie breaker</p>
+            <h3>Set final positions</h3>
+          </div>
+        </div>
+        <p class="helper-text">
+          If players tie, use your side game and then assign the final order here before finishing the
+          game.
+        </p>
+        <div id="positionAssignments" class="form-stack"></div>
+        <div class="dialog-actions">
+          <button class="secondary-btn" type="button" id="cancelPositionBtn">Cancel</button>
+          <button class="primary-btn" type="submit">Finish game</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="historyDialog">
+      <div class="dialog-form wide" id="historyDialogContent"></div>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

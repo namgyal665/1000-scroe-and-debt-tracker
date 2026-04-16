@@ -4,6 +4,7 @@ Mobile-first browser app for your card games:
 
 - `Session mode` for multiple games before settling
 - `Single game mode` for quick one-off games
+- Saved player profiles with photos and bios
 - Custom payouts by finishing position
 - Exact `1000` winner bonus
 - `0` or negative score loser bonus
@@ -19,10 +20,12 @@ Open [index.html](/Users/tenzinnamgyal/Documents/New%20project/index.html) in a 
 - Normal round: all player points must total `360`
 - Declaration success: declarer gets `720`, others `0`
 - Declaration fail: declarer gets `-360`, their own won points are ignored, and only the points actually won by the other players count
+- Round entry uses per-player `Declare -> Declared -> Failed` controls with a live running total
+- Setup now uses one section at a time: `Basics`, `Players`, `Payouts`
 - Winner can be determined by:
   - first player to reach `1000`
   - highest score when you manually finish the game
-- Payouts are set before the session by finishing position
+- Payouts are set before the session using labels like `Lowest pays`, `2nd lowest pays`, and `2nd highest pays`
 - Special money rules:
   - winner on exactly `1000`: each losing player's payment adds their original amount one more time
   - player on `0` or less: that player's payment adds their original amount one more time
@@ -31,4 +34,5 @@ Open [index.html](/Users/tenzinnamgyal/Documents/New%20project/index.html) in a 
 ## Notes
 
 - Tie handling is manual on purpose: when scores tie, use your side game, then assign the final positions in the finish dialog.
+- After each game, the app now shows a dedicated result screen before you start the next game or settle the session.
 - Data is saved in the browser with `localStorage`.

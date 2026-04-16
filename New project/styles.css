@@ -1,17 +1,17 @@
 :root {
   color-scheme: light;
-  --bg: #f5efe2;
-  --surface: rgba(255, 252, 245, 0.9);
-  --surface-strong: #fffaf0;
-  --line: rgba(76, 63, 44, 0.14);
-  --text: #2d2419;
-  --muted: #7b6a55;
-  --accent: #0f5c4d;
-  --accent-soft: #d6ebe5;
-  --accent-strong: #0a4337;
-  --danger: #9d2b2b;
-  --danger-soft: #f7d7d7;
-  --shadow: 0 18px 48px rgba(43, 30, 14, 0.08);
+  --bg: #f3e7d3;
+  --surface: rgba(255, 248, 237, 0.92);
+  --surface-strong: #fff8ed;
+  --line: rgba(71, 53, 43, 0.16);
+  --text: #241a14;
+  --muted: #705a4d;
+  --accent: #8e2c2c;
+  --accent-soft: #efd8d2;
+  --accent-strong: #6b1e1e;
+  --danger: #b22222;
+  --danger-soft: #f6d9d6;
+  --shadow: 0 18px 48px rgba(63, 36, 23, 0.1);
   --radius: 24px;
 }
 
@@ -24,10 +24,11 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(196, 165, 118, 0.34), transparent 30%),
-    linear-gradient(180deg, #f6f0e2 0%, #efe6d6 100%);
+    radial-gradient(circle at top left, rgba(166, 96, 72, 0.2), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(47, 79, 79, 0.12), transparent 24%),
+    linear-gradient(180deg, #f3e7d3 0%, #ebdcc5 100%);
   color: var(--text);
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  font-family: "Avenir Next", "Trebuchet MS", "Georgia", serif;
 }
 
 body {
@@ -103,7 +104,7 @@ select {
 .hero-card {
   padding: 24px;
   background:
-    linear-gradient(135deg, rgba(15, 92, 77, 0.96), rgba(23, 73, 111, 0.92)),
+    linear-gradient(135deg, rgba(142, 44, 44, 0.96), rgba(47, 79, 79, 0.92)),
     var(--surface);
   color: white;
 }
@@ -159,9 +160,51 @@ select {
 .settlement-list,
 .round-list,
 .summary-list,
-.score-list {
+.score-list,
+.metric-grid,
+.round-player-list,
+.action-stack {
   display: grid;
   gap: 12px;
+}
+
+.setup-step {
+  display: none;
+  gap: 12px;
+}
+
+.setup-step.active {
+  display: grid;
+}
+
+.wizard-steps,
+.wizard-actions,
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wizard-steps {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px;
+}
+
+.wizard-step {
+  flex: 1;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  padding: 10px 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.wizard-step.active {
+  background: var(--accent);
+  color: white;
 }
 
 label {
@@ -190,13 +233,23 @@ select {
 input:focus,
 select:focus,
 button:focus {
-  outline: 2px solid rgba(15, 92, 77, 0.24);
+  outline: 2px solid rgba(142, 44, 44, 0.24);
   outline-offset: 2px;
 }
 
 .subtle-box {
   padding: 16px;
   background: rgba(255, 250, 240, 0.72);
+}
+
+.player-slot {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-badge {
+  display: flex;
+  justify-content: center;
 }
 
 .player-grid,
@@ -233,6 +286,23 @@ button:focus {
   border: 1px solid var(--line);
 }
 
+.secondary-btn.decl-btn {
+  min-width: 98px;
+  padding: 10px 12px;
+}
+
+.secondary-btn.decl-btn.declared {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: rgba(142, 44, 44, 0.26);
+}
+
+.secondary-btn.decl-btn.failed {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: rgba(157, 43, 43, 0.22);
+}
+
 .secondary-btn.danger {
   color: var(--danger);
   background: var(--danger-soft);
@@ -243,12 +313,72 @@ button:focus {
   border-radius: 20px;
   border: 1px dashed var(--line);
   color: var(--muted);
-  background: rgba(255, 252, 245, 0.66);
+  background: rgba(255, 248, 237, 0.72);
+}
+
+.profile-preview {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-preview-image,
+.avatar-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+.avatar-fallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(47, 79, 79, 0.16);
+  color: #2f4f4f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.history-card.compact {
+  padding: 14px;
 }
 
 .session-head {
   display: grid;
   gap: 14px;
+}
+
+.metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metric-card {
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(255, 244, 230, 0.9);
+  border: 1px solid var(--line);
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.metric-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.metric-name {
+  font-size: 1.05rem;
 }
 
 .score-list {
@@ -264,8 +394,8 @@ button:focus {
 
 .leaderboard-row.current-winner {
   color: var(--accent-strong);
-  border-color: rgba(15, 92, 77, 0.28);
-  background: rgba(214, 235, 229, 0.62);
+  border-color: rgba(142, 44, 44, 0.26);
+  background: rgba(239, 216, 210, 0.72);
 }
 
 .leaderboard-row:last-child,
@@ -277,6 +407,7 @@ button:focus {
 .player-meta {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .player-name {
@@ -304,12 +435,19 @@ button:focus {
 }
 
 .score-card.current-winner {
-  border-color: rgba(15, 92, 77, 0.35);
+  border-color: rgba(142, 44, 44, 0.3);
 }
 
 .round-entry {
   display: grid;
   gap: 14px;
+}
+
+.round-player-card {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 14px;
 }
 
 .inline-toggle {
@@ -323,10 +461,15 @@ button:focus {
 }
 
 .round-summary {
-  background: rgba(214, 235, 229, 0.45);
+  background: rgba(239, 216, 210, 0.58);
   border-radius: 18px;
   padding: 12px 14px;
   color: var(--accent-strong);
+}
+
+.round-summary.is-error {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .summary-card h4,
@@ -434,6 +577,10 @@ dialog::backdrop {
 
   .hero-card h2 {
     font-size: 1.6rem;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
   }
 
   .topbar,

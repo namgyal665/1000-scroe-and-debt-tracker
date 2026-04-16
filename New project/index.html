@@ -37,52 +37,82 @@
             </div>
 
             <form id="sessionForm" class="form-stack">
-              <label>
-                <span>Session name</span>
-                <input type="text" id="sessionName" placeholder="Friday Night Cards" />
-              </label>
-
-              <label>
-                <span>Mode</span>
-                <select id="sessionMode">
-                  <option value="session">Session mode (multiple games)</option>
-                  <option value="single">Single game (settle after one game)</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Win condition</span>
-                <select id="winCondition">
-                  <option value="first-1000">First to reach 1000</option>
-                  <option value="highest-score">Highest score</option>
-                </select>
-              </label>
-
-              <div class="subtle-box">
-                <div class="panel-head tight">
-                  <div>
-                    <p class="eyebrow">Players</p>
-                    <h4>4 or 5 players</h4>
-                  </div>
-                  <button class="secondary-btn" id="toggleFifthPlayerBtn" type="button">Add 5th player</button>
-                </div>
-                <div class="player-grid" id="playerInputs"></div>
+              <div class="wizard-steps">
+                <button class="wizard-step active" data-setup-step="0" type="button">Basics</button>
+                <button class="wizard-step" data-setup-step="1" type="button">Players</button>
+                <button class="wizard-step" data-setup-step="2" type="button">Payouts</button>
               </div>
 
-              <div class="subtle-box">
-                <div class="panel-head tight">
-                  <div>
-                    <p class="eyebrow">Money setup</p>
-                    <h4>Amount owed by final position</h4>
-                  </div>
-                </div>
-                <p class="helper-text">
-                  Set how much each finishing position pays. Use 0 if that position pays nothing.
-                </p>
-                <div class="payout-grid" id="payoutInputs"></div>
+              <div class="setup-step active" data-step-panel="0">
+                <label>
+                  <span>Session name</span>
+                  <input type="text" id="sessionName" placeholder="Friday Night Cards" />
+                </label>
+
+                <label>
+                  <span>Mode</span>
+                  <select id="sessionMode">
+                    <option value="session">Session mode (multiple games)</option>
+                    <option value="single">Single game (settle after one game)</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Win condition</span>
+                  <select id="winCondition">
+                    <option value="first-1000">First to reach 1000</option>
+                    <option value="highest-score">Highest score</option>
+                  </select>
+                </label>
+
+                <button class="primary-btn" data-next-step="1" type="button">Next: players</button>
               </div>
 
-              <button class="primary-btn" type="submit">Start session</button>
+              <div class="setup-step" data-step-panel="1">
+                <div class="panel-head">
+                  <div>
+                    <p class="eyebrow">Profiles</p>
+                    <h4>Saved players</h4>
+                  </div>
+                  <button class="secondary-btn" id="manageProfilesBtn" type="button">Manage profiles</button>
+                </div>
+
+                <div class="subtle-box">
+                  <div class="panel-head tight">
+                    <div>
+                      <p class="eyebrow">Players</p>
+                      <h4>4 or 5 players</h4>
+                    </div>
+                    <button class="secondary-btn" id="toggleFifthPlayerBtn" type="button">Add 5th player</button>
+                  </div>
+                  <div class="player-grid" id="playerInputs"></div>
+                </div>
+
+                <div class="wizard-actions">
+                  <button class="secondary-btn" data-prev-step="0" type="button">Back</button>
+                  <button class="primary-btn" data-next-step="2" type="button">Next: payouts</button>
+                </div>
+              </div>
+
+              <div class="setup-step" data-step-panel="2">
+                <div class="subtle-box">
+                  <div class="panel-head tight">
+                    <div>
+                      <p class="eyebrow">Money setup</p>
+                      <h4>Amount owed by final position</h4>
+                    </div>
+                  </div>
+                  <p class="helper-text">
+                    Set how much each finishing position pays. Use 0 if that position pays nothing.
+                  </p>
+                  <div class="payout-grid" id="payoutInputs"></div>
+                </div>
+
+                <div class="wizard-actions">
+                  <button class="secondary-btn" data-prev-step="1" type="button">Back</button>
+                  <button class="primary-btn" type="submit">Start session</button>
+                </div>
+              </div>
             </form>
           </div>
 
@@ -145,6 +175,44 @@
 
     <dialog id="historyDialog">
       <div class="dialog-form wide" id="historyDialogContent"></div>
+    </dialog>
+
+    <dialog id="profileDialog">
+      <form class="dialog-form wide" id="profileForm">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Player profiles</p>
+            <h3>Saved players</h3>
+          </div>
+          <button class="secondary-btn" type="button" id="closeProfileDialogBtn">Close</button>
+        </div>
+
+        <div id="profileList" class="history-list"></div>
+
+        <div class="summary-card">
+          <h4 id="profileFormTitle">Add profile</h4>
+          <div class="form-stack">
+            <input type="hidden" id="profileId" />
+            <label>
+              <span>Name</span>
+              <input type="text" id="profileName" placeholder="Player name" />
+            </label>
+            <label>
+              <span>Bio</span>
+              <input type="text" id="profileBio" placeholder="Short note or nickname" />
+            </label>
+            <label>
+              <span>Photo</span>
+              <input type="file" id="profilePhoto" accept="image/*" />
+            </label>
+            <div id="profilePreview" class="profile-preview empty-state">No photo selected.</div>
+            <div class="wizard-actions">
+              <button class="secondary-btn" type="button" id="resetProfileBtn">Clear form</button>
+              <button class="primary-btn" type="submit">Save profile</button>
+            </div>
+          </div>
+        </div>
+      </form>
     </dialog>
 
     <script src="./app.js"></script>

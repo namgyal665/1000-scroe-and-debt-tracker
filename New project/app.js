@@ -2,6 +2,7 @@ const STORAGE_KEY = "card-debt-tracker-state-v1";
 
 const state = loadState();
 const els = {};
+let pendingProfileImage = "";
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -22,6 +23,7 @@ function bindElements() {
   els.playerInputs = document.getElementById("playerInputs");
   els.payoutInputs = document.getElementById("payoutInputs");
   els.toggleFifthPlayerBtn = document.getElementById("toggleFifthPlayerBtn");
+  els.manageProfilesBtn = document.getElementById("manageProfilesBtn");
   els.demoBtn = document.getElementById("demoBtn");
   els.activeSessionChip = document.getElementById("activeSessionChip");
   els.activeSessionSummary = document.getElementById("activeSessionSummary");
@@ -33,6 +35,19 @@ function bindElements() {
   els.cancelPositionBtn = document.getElementById("cancelPositionBtn");
   els.historyDialog = document.getElementById("historyDialog");
   els.historyDialogContent = document.getElementById("historyDialogContent");
+  els.setupSteps = [...document.querySelectorAll(".wizard-step")];
+  els.setupPanels = [...document.querySelectorAll(".setup-step")];
+  els.profileDialog = document.getElementById("profileDialog");
+  els.profileForm = document.getElementById("profileForm");
+  els.profileList = document.getElementById("profileList");
+  els.profileId = document.getElementById("profileId");
+  els.profileName = document.getElementById("profileName");
+  els.profileBio = document.getElementById("profileBio");
+  els.profilePhoto = document.getElementById("profilePhoto");
+  els.profilePreview = document.getElementById("profilePreview");
+  els.profileFormTitle = document.getElementById("profileFormTitle");
+  els.closeProfileDialogBtn = document.getElementById("closeProfileDialogBtn");
+  els.resetProfileBtn = document.getElementById("resetProfileBtn");
 }
 
 function bindEvents() {
@@ -49,19 +64,47 @@ function bindEvents() {
     renderSetupInputs();
   });
 
+  els.manageProfilesBtn.addEventListener("click", openProfileDialog);
+
   els.sessionForm.addEventListener("submit", (event) => {
     event.preventDefault();
     startSession();
   });
 
   els.demoBtn.addEventListener("click", loadDemoSession);
+  els.setupSteps.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.ui.setupStep = Number(button.dataset.setupStep);
+      renderSetupStep();
+      saveState();
+    });
+  });
+  document.querySelectorAll("[data-next-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.ui.setupStep = Number(button.dataset.nextStep);
+      renderSetupStep();
+      saveState();
+    });
+  });
+  document.querySelectorAll("[data-prev-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.ui.setupStep = Number(button.dataset.prevStep);
+      renderSetupStep();
+      saveState();
+    });
+  });
 
   els.cancelPositionBtn.addEventListener("click", () => els.positionDialog.close());
   els.positionForm.addEventListener("submit", handlePositionSubmit);
+  els.closeProfileDialogBtn.addEventListener("click", () => els.profileDialog.close());
+  els.resetProfileBtn.addEventListener("click", resetProfileForm);
+  els.profilePhoto.addEventListener("change", handleProfilePhotoChange);
+  els.profileForm.addEventListener("submit", handleProfileSave);
 }
 
 function renderAll() {
   renderNav();
+  renderSetupStep();
   renderActiveSessionChip();
   renderHome();
   renderPlay();
@@ -84,15 +127,35 @@ function renderSetupInputs() {
     setupPlayers === 4 ? "Add 5th player" : "Use 4 players";
 
   const existingNames = state.ui.setupPlayers || [];
+  const existingProfileIds = state.ui.setupProfileIds || [];
   state.ui.setupPlayers = Array.from({ length: setupPlayers }, (_, index) => existingNames[index] || "");
+  state.ui.setupProfileIds = Array.from({ length: setupPlayers }, (_, index) => existingProfileIds[index] || "");
 
   els.playerInputs.innerHTML = state.ui.setupPlayers
     .map(
       (name, index) => `
-        <label>
-          <span>Player ${index + 1}</span>
-          <input type="text" data-player-index="${index}" value="${escapeHtml(name)}" placeholder="Name" />
-        </label>
+        <div class="player-slot">
+          <div class="profile-badge">${renderProfileBadge(index)}</div>
+          <label>
+            <span>Saved profile</span>
+            <select data-player-profile-index="${index}">
+              <option value="">Custom player</option>
+              ${state.profiles
+                .map(
+                  (profile) => `
+                    <option value="${profile.id}" ${state.ui.setupProfileIds[index] === profile.id ? "selected" : ""}>
+                      ${escapeHtml(profile.name)}
+                    </option>
+                  `,
+                )
+                .join("")}
+            </select>
+          </label>
+          <label>
+            <span>Player ${index + 1}</span>
+            <input type="text" data-player-index="${index}" value="${escapeHtml(name)}" placeholder="Name" />
+          </label>
+        </div>
       `,
     )
     .join("");
@@ -110,7 +173,7 @@ function renderSetupInputs() {
     const value = Number.isFinite(state.ui.setupPayouts[position]) ? state.ui.setupPayouts[position] : "";
     return `
       <label>
-        <span>${label} pays</span>
+        <span>${label}</span>
         <input type="number" min="0" step="0.01" data-payout-position="${position}" value="${value}" placeholder="0" />
       </label>
     `;
@@ -122,10 +185,36 @@ function renderSetupInputs() {
     });
   });
 
+  els.playerInputs.querySelectorAll("select").forEach((select) => {
+    select.addEventListener("change", (event) => {
+      const index = Number(event.target.dataset.playerProfileIndex);
+      const profileId = event.target.value;
+      state.ui.setupProfileIds[index] = profileId;
+      if (profileId) {
+        const profile = state.profiles.find((entry) => entry.id === profileId);
+        if (profile) {
+          state.ui.setupPlayers[index] = profile.name;
+        }
+      }
+      saveState();
+      renderSetupInputs();
+    });
+  });
+
   els.payoutInputs.querySelectorAll("input").forEach((input) => {
     input.addEventListener("input", (event) => {
       state.ui.setupPayouts[event.target.dataset.payoutPosition] = sanitizeMoney(event.target.value);
     });
+  });
+}
+
+function renderSetupStep() {
+  const step = state.ui.setupStep || 0;
+  els.setupSteps.forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.setupStep) === step);
+  });
+  els.setupPanels.forEach((panel) => {
+    panel.classList.toggle("active", Number(panel.dataset.stepPanel) === step);
   });
 }
 
@@ -174,7 +263,7 @@ function renderHome() {
       <div class="pill-row">
         <span class="status-pill">${labelWinCondition(session.winCondition)}</span>
         <span class="status-pill">${session.games.length} completed game${session.games.length === 1 ? "" : "s"}</span>
-        <span class="status-pill">${session.currentGame ? "Game in progress" : "Ready for next game"}</span>
+        <span class="status-pill">${session.currentGame ? "Game in progress" : session.endgameSummary ? "Review last game" : "Ready for next game"}</span>
       </div>
       <div class="summary-list">${balanceMarkup || '<div class="empty-state">No balances yet.</div>'}</div>
     </div>
@@ -190,11 +279,159 @@ function renderHome() {
   }
 }
 
+function openProfileDialog() {
+  renderProfileList();
+  resetProfileForm();
+  els.profileDialog.showModal();
+}
+
+function renderProfileList() {
+  if (!state.profiles.length) {
+    els.profileList.innerHTML = '<div class="empty-state">No saved player profiles yet.</div>';
+    return;
+  }
+
+  els.profileList.innerHTML = state.profiles
+    .map(
+      (profile) => `
+        <article class="history-card compact">
+          <div class="history-card-header">
+            <div class="profile-row">
+              ${profile.image ? `<img class="avatar-image" src="${profile.image}" alt="${escapeHtml(profile.name)}" />` : `<div class="avatar-fallback">${escapeHtml(profile.name.slice(0, 1).toUpperCase())}</div>`}
+              <div class="history-meta">
+                <h4>${escapeHtml(profile.name)}</h4>
+                <p>${escapeHtml(profile.bio || "No bio yet")}</p>
+              </div>
+            </div>
+            <div class="wizard-actions">
+              <button class="secondary-btn" type="button" data-edit-profile="${profile.id}">Edit</button>
+              <button class="secondary-btn danger" type="button" data-delete-profile="${profile.id}">Delete</button>
+            </div>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+
+  els.profileList.querySelectorAll("[data-edit-profile]").forEach((button) => {
+    button.addEventListener("click", () => loadProfileIntoForm(button.dataset.editProfile));
+  });
+  els.profileList.querySelectorAll("[data-delete-profile]").forEach((button) => {
+    button.addEventListener("click", () => deleteProfile(button.dataset.deleteProfile));
+  });
+}
+
+function renderProfileBadge(index) {
+  const profileId = state.ui.setupProfileIds[index];
+  const profile = state.profiles.find((entry) => entry.id === profileId);
+  if (profile?.image) {
+    return `<img class="avatar-image" src="${profile.image}" alt="${escapeHtml(profile.name)}" />`;
+  }
+  if (profile) {
+    return `<div class="avatar-fallback">${escapeHtml(profile.name.slice(0, 1).toUpperCase())}</div>`;
+  }
+  return `<div class="avatar-fallback">${index + 1}</div>`;
+}
+
+function renderAvatar(player) {
+  if (player.image) {
+    return `<img class="avatar-image" src="${player.image}" alt="${escapeHtml(player.name)}" />`;
+  }
+  return `<div class="avatar-fallback">${escapeHtml(player.name.slice(0, 1).toUpperCase())}</div>`;
+}
+
+function loadProfileIntoForm(profileId) {
+  const profile = state.profiles.find((entry) => entry.id === profileId);
+  if (!profile) return;
+  els.profileFormTitle.textContent = "Edit profile";
+  els.profileId.value = profile.id;
+  els.profileName.value = profile.name;
+  els.profileBio.value = profile.bio || "";
+  pendingProfileImage = profile.image || "";
+  renderProfilePreview();
+}
+
+function resetProfileForm() {
+  els.profileFormTitle.textContent = "Add profile";
+  els.profileId.value = "";
+  els.profileName.value = "";
+  els.profileBio.value = "";
+  els.profilePhoto.value = "";
+  pendingProfileImage = "";
+  renderProfilePreview();
+}
+
+function renderProfilePreview() {
+  if (!pendingProfileImage) {
+    els.profilePreview.className = "profile-preview empty-state";
+    els.profilePreview.textContent = "No photo selected.";
+    return;
+  }
+  els.profilePreview.className = "profile-preview";
+  els.profilePreview.innerHTML = `<img class="profile-preview-image" src="${pendingProfileImage}" alt="Profile preview" />`;
+}
+
+function handleProfilePhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    pendingProfileImage = typeof reader.result === "string" ? reader.result : "";
+    renderProfilePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleProfileSave(event) {
+  event.preventDefault();
+  const name = els.profileName.value.trim();
+  if (!name) {
+    window.alert("Please enter a player name.");
+    return;
+  }
+
+  const bio = els.profileBio.value.trim();
+  const existingId = els.profileId.value;
+  if (existingId) {
+    const profile = state.profiles.find((entry) => entry.id === existingId);
+    if (profile) {
+      profile.name = name;
+      profile.bio = bio;
+      profile.image = pendingProfileImage;
+    }
+  } else {
+    state.profiles.push({
+      id: crypto.randomUUID(),
+      name,
+      bio,
+      image: pendingProfileImage,
+    });
+  }
+
+  saveState();
+  renderProfileList();
+  renderSetupInputs();
+  resetProfileForm();
+}
+
+function deleteProfile(profileId) {
+  state.profiles = state.profiles.filter((entry) => entry.id !== profileId);
+  state.ui.setupProfileIds = (state.ui.setupProfileIds || []).map((id) => (id === profileId ? "" : id));
+  saveState();
+  renderProfileList();
+  renderSetupInputs();
+}
+
 function renderPlay() {
   const session = state.activeSession;
   if (!session) {
     els.playRoot.className = "empty-state";
     els.playRoot.textContent = "Start a session to begin tracking scores.";
+    return;
+  }
+
+  if (session.endgameSummary) {
+    renderPlayEndgame(session);
     return;
   }
 
@@ -204,10 +441,13 @@ function renderPlay() {
     saveState();
   }
 
-  const balances = calculateSessionBalances(session);
-  const settlement = simplifyBalances(balances);
-  const leaderboard = getLeaderboard(currentGame.players, session.winCondition);
+  ensureRoundDraft(currentGame);
+
+  const leaderboard = getLeaderboard(currentGame.players);
   const currentWinnerId = leaderboard[0]?.id;
+  const topScore = leaderboard[0]?.score ?? 0;
+  const topName = leaderboard[0]?.name ?? "No leader";
+  const roundStatus = getRoundDraftStatus(currentGame);
 
   els.playRoot.className = "";
   els.playRoot.innerHTML = `
@@ -225,7 +465,18 @@ function renderPlay() {
         <div class="pill-row">
           <span class="status-pill">${labelWinCondition(session.winCondition)}</span>
           <span class="status-pill">Game ${session.games.length + 1}</span>
-          <span class="status-pill">${currentGame.rounds.length} round${currentGame.rounds.length === 1 ? "" : "s"}</span>
+          <span class="status-pill">Round ${currentGame.rounds.length + 1}</span>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Leader</div>
+          <div class="metric-value metric-name">${escapeHtml(topName)}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Top score</div>
+          <div class="metric-value mono">${topScore}</div>
         </div>
       </div>
 
@@ -237,8 +488,8 @@ function renderPlay() {
           </div>
           ${
             session.winCondition === "highest-score"
-              ? '<button class="secondary-btn" type="button" data-force-finish="true">Finish this game</button>'
-              : '<div class="muted">Auto-finish when someone reaches 1000</div>'
+              ? '<button class="secondary-btn" type="button" data-force-finish="true">Finish game now</button>'
+              : '<div class="muted">Auto-finish at 1000</div>'
           }
         </div>
         <div class="score-list">
@@ -246,11 +497,15 @@ function renderPlay() {
             .map(
               (player, index) => `
                 <div class="leaderboard-row ${player.id === currentWinnerId ? "current-winner" : ""}">
-                  <div class="player-meta">
-                    <strong>${index + 1}. ${escapeHtml(player.name)}</strong>
-                    <div class="pill-row">
-                      ${player.score <= 0 ? '<span class="status-pill bad">0 or negative</span>' : ""}
-                      ${player.score === 1000 ? '<span class="status-pill warn">Exact 1000</span>' : ""}
+                  <div class="profile-row">
+                    ${renderAvatar(player)}
+                    <div class="player-meta">
+                      <strong>${index + 1}. ${escapeHtml(player.name)}</strong>
+                      <div class="muted">${escapeHtml(player.bio || "")}</div>
+                      <div class="pill-row">
+                        ${player.score <= 0 ? '<span class="status-pill bad">0 or negative</span>' : ""}
+                        ${player.score === 1000 ? '<span class="status-pill warn">Exact 1000</span>' : ""}
+                      </div>
                     </div>
                   </div>
                   <div class="score-number mono">${player.score}</div>
@@ -265,72 +520,113 @@ function renderPlay() {
         <div class="panel-head">
           <div>
             <p class="eyebrow">Round entry</p>
-            <h4>Add round result</h4>
+            <h4>Enter round</h4>
           </div>
+          <div class="muted mono" id="roundTotalDisplay">Total: ${roundStatus.total} / ${roundStatus.maxTotal}</div>
         </div>
         <form id="roundForm" class="round-entry">
-          <label class="inline-toggle">
-            <input type="checkbox" id="declarationToggle" />
-            <span>Round includes declaration to win all cards</span>
-          </label>
-
-          <label id="declarerLabel" hidden>
-            <span>Declaring player</span>
-            <select id="declaringPlayer">
-              ${currentGame.players
-                .map((player) => `<option value="${player.id}">${escapeHtml(player.name)}</option>`)
-                .join("")}
-            </select>
-          </label>
-
-          <label id="declarationResultLabel" hidden>
-            <span>Declaration result</span>
-            <select id="declarationResult">
-              <option value="success">Success (+720, others 0)</option>
-              <option value="fail">Failed (-360, only stolen points count)</option>
-            </select>
-          </label>
-
-          <div class="round-grid" id="roundPointInputs">
+          <div class="round-player-list">
             ${currentGame.players
-              .map(
-                (player) => `
-                  <label>
-                    <span>${escapeHtml(player.name)} points</span>
-                    <input type="number" value="0" min="0" step="5" inputmode="numeric" data-round-player="${player.id}" />
-                  </label>
-                `,
-              )
+              .map((player) => {
+                const declaration = currentGame.roundDraft.declarations[player.id] || "none";
+                const pointsValue = currentGame.roundDraft.points[player.id] ?? 0;
+                const isDeclared = declaration === "declared";
+                const isFailed = declaration === "failed";
+                return `
+                  <div class="round-player-card">
+                    <div class="panel-head tight">
+                      <div>
+                        <strong>${escapeHtml(player.name)}</strong>
+                        <div class="muted">Score: ${player.score}</div>
+                      </div>
+                      <button
+                        class="secondary-btn decl-btn ${isDeclared ? "declared" : ""} ${isFailed ? "failed" : ""}"
+                        type="button"
+                        data-declare-player="${player.id}"
+                      >
+                        ${declaration === "none" ? "Declare" : declaration === "declared" ? "Declared" : "Failed"}
+                      </button>
+                    </div>
+                    <label>
+                      <span>Points won</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="${isDeclared ? 720 : 360}"
+                        step="5"
+                        inputmode="numeric"
+                        data-round-player="${player.id}"
+                        value="${pointsValue}"
+                        ${isDeclared ? "disabled" : ""}
+                      />
+                    </label>
+                  </div>
+                `;
+              })
               .join("")}
           </div>
 
-          <div class="round-summary" id="roundSummary">
-            Normal rounds should total 360 points. If a declaration succeeds, the declarer gets 720 and
-            everyone else gets 0. If a declaration fails, the declarer gets -360 and only the points won by
-            the other players count.
+          <div class="round-summary ${roundStatus.kind === "error" ? "is-error" : ""}" id="roundSummary">
+            ${escapeHtml(roundStatus.message)}
           </div>
 
-          <button class="primary-btn" type="submit">Add round</button>
+          <button class="primary-btn" type="submit">Confirm round</button>
         </form>
+      </div>
+    </div>
+  `;
+
+  els.playRoot.querySelector("#roundForm").addEventListener("submit", handleRoundSubmit);
+  els.playRoot.querySelector("[data-end-session='true']").addEventListener("click", finalizeSession);
+  els.playRoot.querySelectorAll("[data-declare-player]").forEach((button) => {
+    button.addEventListener("click", () => cycleDeclarationState(button.dataset.declarePlayer));
+  });
+  els.playRoot.querySelectorAll("[data-round-player]").forEach((input) => {
+    input.addEventListener("input", () => updateRoundDraft(input.dataset.roundPlayer, input.value));
+  });
+
+  const finishBtn = els.playRoot.querySelector("[data-force-finish='true']");
+  if (finishBtn) {
+    finishBtn.addEventListener("click", () => beginGameFinish("manual"));
+  }
+}
+
+function renderPlayEndgame(session) {
+  const game = session.endgameSummary;
+  els.playRoot.className = "";
+  els.playRoot.innerHTML = `
+    <div class="session-head">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Game over</p>
+            <h3>Game ${session.games.length} complete</h3>
+          </div>
+          <span class="status-pill">${session.mode === "session" ? "Session continues" : "Single game"}</span>
+        </div>
       </div>
 
       <div class="summary-card">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">Running debt</p>
-            <h4>Session balances</h4>
+            <p class="eyebrow">Final standings</p>
+            <h4>Results</h4>
           </div>
         </div>
         <div class="summary-list">
-          ${balances
+          ${game.results
             .map(
-              (entry) => `
+              (result) => `
                 <div class="summary-row">
                   <div>
-                    <strong>${escapeHtml(entry.name)}</strong>
-                    <div class="muted">${entry.balance >= 0 ? "Receives overall" : "Owes overall"}</div>
+                    <strong>${result.position}. ${escapeHtml(result.name)}</strong>
+                    <div class="muted">
+                      ${result.score} points
+                      ${result.score === 1000 ? " • exact 1000" : ""}
+                      ${result.score <= 0 && result.position > 1 ? " • 0/negative" : ""}
+                    </div>
                   </div>
-                  <strong class="mono">${formatCurrency(Math.abs(entry.balance))}</strong>
+                  <strong class="mono">${result.payment > 0 ? "+" : "-"}${formatCurrency(Math.abs(result.payment))}</strong>
                 </div>
               `,
             )
@@ -341,128 +637,52 @@ function renderPlay() {
       <div class="debt-card">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">If you settled now</p>
-            <h4>Splitwise-style simplification</h4>
+            <p class="eyebrow">Payouts this game</p>
+            <h4>Who pays what</h4>
           </div>
         </div>
         <div class="settlement-list">
           ${
-            settlement.length
-              ? settlement
+            game.results.some((result) => result.owesWinner > 0)
+              ? game.results
+                  .filter((result) => result.owesWinner > 0)
                   .map(
-                    (tx) => `
+                    (result) => `
                       <div class="debt-row">
                         <div>
-                          <strong>${escapeHtml(tx.fromName)}</strong>
-                          <div class="muted">pays ${escapeHtml(tx.toName)}</div>
+                          <strong>${escapeHtml(result.name)} pays ${escapeHtml(game.results[0].name)}</strong>
+                          <div class="muted">${escapeHtml(result.multiplierNote || "Base payout")}</div>
                         </div>
-                        <strong class="mono">${formatCurrency(tx.amount)}</strong>
+                        <strong class="mono">${formatCurrency(result.owesWinner)}</strong>
                       </div>
                     `,
                   )
                   .join("")
-              : '<div class="empty-state">No debt yet.</div>'
+              : '<div class="empty-state">No payouts this game.</div>'
           }
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Completed games</p>
-            <h4>Session history so far</h4>
-          </div>
-          ${
-            session.games.length
-              ? `<span class="muted">${session.games.length} game${session.games.length === 1 ? "" : "s"} saved</span>`
-              : ""
-          }
-        </div>
-        <div class="round-list">
-          ${
-            session.games.length
-              ? session.games
-                  .map(
-                    (game, index) => `
-                      <article>
-                        <div class="round-head">
-                          <strong>Game ${index + 1}</strong>
-                          <span class="muted">${new Date(game.finishedAt).toLocaleString()}</span>
-                        </div>
-                        ${game.results
-                          .map(
-                            (result) => `
-                              <div class="summary-row">
-                                <div>
-                                  <strong>${result.position}. ${escapeHtml(result.name)}</strong>
-                                  <div class="muted">Score ${result.score}</div>
-                                </div>
-                                <strong class="mono">${result.payment > 0 ? "-" : "+"}${formatCurrency(Math.abs(result.payment))}</strong>
-                              </div>
-                            `,
-                          )
-                          .join("")}
-                      </article>
-                    `,
-                  )
-                  .join("")
-              : '<div class="empty-state">No finished games in this session yet.</div>'
-          }
-        </div>
+      <div class="panel action-stack">
+        ${
+          session.mode === "session"
+            ? `
+              <button class="primary-btn" type="button" data-next-game="true">Start next game</button>
+              <button class="secondary-btn" type="button" data-end-session="true">End session & settle</button>
+            `
+            : `
+              <button class="primary-btn" type="button" data-end-session="true">Settle & save</button>
+            `
+        }
       </div>
     </div>
   `;
 
-  els.playRoot.querySelector("#roundForm").addEventListener("submit", handleRoundSubmit);
-  els.playRoot.querySelector("#declarationToggle").addEventListener("change", renderRoundMode);
-  els.playRoot.querySelector("#declarationResult")?.addEventListener("change", renderRoundMode);
   els.playRoot.querySelector("[data-end-session='true']").addEventListener("click", finalizeSession);
-
-  const finishBtn = els.playRoot.querySelector("[data-force-finish='true']");
-  if (finishBtn) {
-    finishBtn.addEventListener("click", () => beginGameFinish("manual"));
+  const nextBtn = els.playRoot.querySelector("[data-next-game='true']");
+  if (nextBtn) {
+    nextBtn.addEventListener("click", startNextGame);
   }
-
-  renderRoundMode();
-}
-
-function renderRoundMode() {
-  const declarationToggle = document.getElementById("declarationToggle");
-  if (!declarationToggle) return;
-
-  const declarerLabel = document.getElementById("declarerLabel");
-  const resultLabel = document.getElementById("declarationResultLabel");
-  const declarationResult = document.getElementById("declarationResult");
-  const roundSummary = document.getElementById("roundSummary");
-  const pointInputs = [...document.querySelectorAll("[data-round-player]")];
-  const declarationEnabled = declarationToggle.checked;
-  const failedDeclaration = declarationEnabled && declarationResult.value === "fail";
-
-  declarerLabel.hidden = !declarationEnabled;
-  resultLabel.hidden = !declarationEnabled;
-
-  pointInputs.forEach((input) => {
-    input.disabled = declarationEnabled && !failedDeclaration;
-    if (declarationEnabled && !failedDeclaration) {
-      input.value = "0";
-    }
-  });
-
-  if (!roundSummary) return;
-
-  if (!declarationEnabled) {
-    roundSummary.textContent = "Normal rounds must total 360 points across all players.";
-    return;
-  }
-
-  if (failedDeclaration) {
-    roundSummary.textContent =
-      "Failed declaration: enter only the points stolen by the other players. Those can total anything from 5 up to 360. The declarer gets -360 and their own won points are ignored.";
-    return;
-  }
-
-  roundSummary.textContent =
-    "Successful declaration: the declarer gets 720 points and everyone else gets 0.";
 }
 
 function renderHistory() {
@@ -539,10 +759,21 @@ function startSession() {
     name: els.sessionName.value.trim() || autoSessionName(playerNames),
     mode: els.sessionMode.value,
     winCondition: els.winCondition.value,
-    players: playerNames.map((name) => ({ id: crypto.randomUUID(), name })),
+    players: playerNames.map((name, index) => {
+      const profileId = state.ui.setupProfileIds[index];
+      const profile = state.profiles.find((entry) => entry.id === profileId);
+      return {
+        id: crypto.randomUUID(),
+        name,
+        profileId: profile?.id || "",
+        bio: profile?.bio || "",
+        image: profile?.image || "",
+      };
+    }),
     payouts,
     games: [],
     currentGame: null,
+    endgameSummary: null,
     createdAt: new Date().toISOString(),
   };
 
@@ -557,7 +788,18 @@ function createGameSkeleton(players) {
   return {
     id: crypto.randomUUID(),
     rounds: [],
-    players: players.map((player) => ({ id: player.id, name: player.name, score: 0 })),
+    players: players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      profileId: player.profileId || "",
+      bio: player.bio || "",
+      image: player.image || "",
+      score: 0,
+    })),
+    roundDraft: {
+      points: Object.fromEntries(players.map((player) => [player.id, 0])),
+      declarations: Object.fromEntries(players.map((player) => [player.id, "none"])),
+    },
     createdAt: new Date().toISOString(),
   };
 }
@@ -566,20 +808,22 @@ function handleRoundSubmit(event) {
   event.preventDefault();
   const session = state.activeSession;
   const game = session.currentGame;
-
-  const declaration = document.getElementById("declarationToggle").checked;
+  ensureRoundDraft(game);
+  const declarationEntries = Object.entries(game.roundDraft.declarations).filter(([, value]) => value !== "none");
+  const declaration = declarationEntries.length > 0;
+  const activeDeclaration = declarationEntries[0] || null;
   const result = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     declaration,
-    declarationPlayerId: declaration ? document.getElementById("declaringPlayer").value : null,
-    declarationResult: declaration ? document.getElementById("declarationResult").value : null,
+    declarationPlayerId: activeDeclaration ? activeDeclaration[0] : null,
+    declarationResult: activeDeclaration ? activeDeclaration[1] : null,
     points: {},
   };
 
   if (declaration) {
     const declarerId = result.declarationPlayerId;
-    if (result.declarationResult === "success") {
+    if (result.declarationResult === "declared") {
       game.players.forEach((player) => {
         result.points[player.id] = player.id === declarerId ? 720 : 0;
       });
@@ -592,8 +836,7 @@ function handleRoundSubmit(event) {
           return;
         }
 
-        const input = document.querySelector(`[data-round-player="${player.id}"]`);
-        const value = sanitizePoints(input.value);
+        const value = sanitizePoints(game.roundDraft.points[player.id]);
         result.points[player.id] = value;
         total += value;
         others += 1;
@@ -614,8 +857,7 @@ function handleRoundSubmit(event) {
   } else {
     let total = 0;
     game.players.forEach((player) => {
-      const input = document.querySelector(`[data-round-player="${player.id}"]`);
-      const value = sanitizePoints(input.value);
+      const value = sanitizePoints(game.roundDraft.points[player.id]);
       result.points[player.id] = value;
       total += value;
     });
@@ -630,6 +872,7 @@ function handleRoundSubmit(event) {
   game.players.forEach((player) => {
     player.score += result.points[player.id];
   });
+  resetRoundDraft(game);
 
   saveState();
 
@@ -706,6 +949,7 @@ function handlePositionSubmit(event) {
         ...entry,
         payment: 0,
         owesWinner: 0,
+        multiplierNote: "",
       };
     }
 
@@ -713,11 +957,15 @@ function handlePositionSubmit(event) {
     const winnerBonus = exactWinner ? baseAmount : 0;
     const loserBonus = entry.score <= 0 ? baseAmount : 0;
     const totalOwed = roundMoney(baseAmount + winnerBonus + loserBonus);
+    const notes = [];
+    if (entry.score <= 0) notes.push("0/neg doubles");
+    if (exactWinner) notes.push("exact 1000 bonus");
 
     return {
       ...entry,
       payment: -totalOwed,
       owesWinner: totalOwed,
+      multiplierNote: notes.join(", ") || "Base payout",
     };
   });
 
@@ -736,20 +984,130 @@ function handlePositionSubmit(event) {
       position: entry.position,
       payment: entry.payment,
       owesWinner: entry.owesWinner || 0,
+      multiplierNote: entry.multiplierNote || "",
     })),
   };
 
   session.games.push(finishedGame);
-  session.currentGame = session.mode === "single" ? null : createGameSkeleton(session.players);
+  session.currentGame = null;
+  session.endgameSummary = finishedGame;
   saveState();
   els.positionDialog.close();
 
-  if (session.mode === "single") {
-    finalizeSession();
-    return;
+  renderAll();
+}
+
+function ensureRoundDraft(game) {
+  if (!game.roundDraft) {
+    game.roundDraft = {
+      points: Object.fromEntries(game.players.map((player) => [player.id, 0])),
+      declarations: Object.fromEntries(game.players.map((player) => [player.id, "none"])),
+    };
+  }
+}
+
+function resetRoundDraft(game) {
+  game.roundDraft = {
+    points: Object.fromEntries(game.players.map((player) => [player.id, 0])),
+    declarations: Object.fromEntries(game.players.map((player) => [player.id, "none"])),
+  };
+}
+
+function cycleDeclarationState(playerId) {
+  const session = state.activeSession;
+  const game = session?.currentGame;
+  if (!game) return;
+  ensureRoundDraft(game);
+
+  const current = game.roundDraft.declarations[playerId] || "none";
+  const next = current === "none" ? "declared" : current === "declared" ? "failed" : "none";
+  Object.keys(game.roundDraft.declarations).forEach((id) => {
+    game.roundDraft.declarations[id] = id === playerId ? next : "none";
+  });
+
+  if (next === "declared") {
+    Object.keys(game.roundDraft.points).forEach((id) => {
+      game.roundDraft.points[id] = id === playerId ? 720 : 0;
+    });
+  } else if (next === "failed") {
+    game.roundDraft.points[playerId] = 0;
+  } else {
+    game.roundDraft.points[playerId] = 0;
   }
 
+  saveState();
+  renderPlay();
+}
+
+function updateRoundDraft(playerId, value) {
+  const session = state.activeSession;
+  const game = session?.currentGame;
+  if (!game) return;
+  ensureRoundDraft(game);
+  game.roundDraft.points[playerId] = sanitizePoints(value);
+  saveState();
+  refreshRoundDraftUi(game);
+}
+
+function getRoundDraftStatus(game) {
+  ensureRoundDraft(game);
+  const declarationEntries = Object.entries(game.roundDraft.declarations).filter(([, value]) => value !== "none");
+  const activeDeclaration = declarationEntries[0] || null;
+
+  if (!activeDeclaration) {
+    const total = Object.values(game.roundDraft.points).reduce((sum, value) => sum + sanitizePoints(value), 0);
+    return {
+      total,
+      maxTotal: 360,
+      kind: total === 360 ? "ok" : "info",
+      message: "Normal round: all player points must total 360.",
+    };
+  }
+
+  if (activeDeclaration[1] === "declared") {
+    return {
+      total: 720,
+      maxTotal: 720,
+      kind: "ok",
+      message: "Successful declaration: declarer gets 720, everyone else gets 0.",
+    };
+  }
+
+  const declarerId = activeDeclaration[0];
+  const total = Object.entries(game.roundDraft.points).reduce((sum, [id, value]) => {
+    if (id === declarerId) return sum;
+    return sum + sanitizePoints(value);
+  }, 0);
+
+  return {
+    total,
+    maxTotal: 360,
+    kind: total <= 0 || total > 360 ? "error" : "info",
+    message:
+      "Failed declaration: declarer gets -360. Enter only the points actually won by the other players.",
+  };
+}
+
+function startNextGame() {
+  const session = state.activeSession;
+  if (!session) return;
+  session.currentGame = createGameSkeleton(session.players);
+  session.endgameSummary = null;
+  saveState();
   renderAll();
+}
+
+function refreshRoundDraftUi(game) {
+  const roundStatus = getRoundDraftStatus(game);
+  const totalNode = els.playRoot.querySelector("#roundTotalDisplay");
+  const summaryNode = els.playRoot.querySelector("#roundSummary");
+  if (totalNode) {
+    totalNode.textContent = `Total: ${roundStatus.total} / ${roundStatus.maxTotal}`;
+  }
+  if (summaryNode) {
+    summaryNode.textContent = roundStatus.message;
+    summaryNode.classList.toggle("is-error", roundStatus.kind === "error");
+  }
 }
 
 function finalizeSession() {
@@ -805,6 +1163,7 @@ function calculateSessionBalances(session) {
       id: player.id,
       name: player.name,
       balance: roundMoney(balances[player.id] || 0),
+      image: player.image || "",
     }))
     .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
 }
@@ -987,11 +1346,15 @@ function labelWinCondition(value) {
 }
 
 function getPositionLabel(position, totalPlayers) {
-  if (position === 1) return "Winner";
-  if (position === 2) return totalPlayers === 4 ? "2nd highest" : "Runner-up";
-  if (position === totalPlayers) return "Lowest";
-  if (position === totalPlayers - 1) return "2nd lowest";
-  return `${ordinal(position)} place`;
+  if (position === 1) return "Winner collects";
+  if (totalPlayers === 5 && position === 2) return "2nd highest pays";
+  if (totalPlayers === 5 && position === 3) return "3rd pays";
+  if (totalPlayers === 5 && position === 4) return "2nd lowest pays";
+  if (totalPlayers === 5 && position === 5) return "Lowest pays";
+  if (totalPlayers === 4 && position === 2) return "2nd highest pays";
+  if (totalPlayers === 4 && position === 3) return "2nd lowest pays";
+  if (totalPlayers === 4 && position === 4) return "Lowest pays";
+  return `${ordinal(position)} place pays`;
 }
 
 function ordinal(number) {
@@ -1039,12 +1402,15 @@ function loadState() {
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
+        profiles: parsed.profiles || [],
         history: parsed.history || [],
         activeSession: parsed.activeSession || null,
         ui: {
           activeView: parsed.ui?.activeView || "home",
+          setupStep: parsed.ui?.setupStep || 0,
           setupPlayerCount: parsed.ui?.setupPlayerCount || 4,
           setupPlayers: parsed.ui?.setupPlayers || ["", "", "", ""],
+          setupProfileIds: parsed.ui?.setupProfileIds || ["", "", "", ""],
           setupPayouts: parsed.ui?.setupPayouts || { 1: 0, 2: 0, 3: 0, 4: 0 },
         },
       };
@@ -1054,12 +1420,15 @@ function loadState() {
   }
 
   return {
+    profiles: [],
     history: [],
     activeSession: null,
     ui: {
       activeView: "home",
+      setupStep: 0,
       setupPlayerCount: 4,
       setupPlayers: ["", "", "", ""],
+      setupProfileIds: ["", "", "", ""],
       setupPayouts: { 1: 0, 2: 0, 3: 0, 4: 0 },
     },
   };
@@ -1069,6 +1438,7 @@ function saveState() {
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
+      profiles: state.profiles,
       history: state.history,
       activeSession: state.activeSession,
       ui: state.ui,
